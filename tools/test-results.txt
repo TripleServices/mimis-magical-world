@@ -1,0 +1,13 @@
+== test_gym_walk
+GYMWALK RESULT track=true court=true probes=true (desk_free=true bed_free=true bleacher_free=true)
+== test_levels
+LEVELS RESULT wins=3 time_ok=[true, true, true] spots_ok=[true, true, true] world_ok=[true, true, true] lvl2_mouse_off=true lvl3_mouse_on=true back_at_menu=true
+== test_game
+TEST RESULT collected=15/15 win_seen=true advanced_to_level2=true back_at_menu=true coco_visible=true
+== test_mouse
+MOUSE RESULT nosteel=true steal=true catch=true recollect=true hunt=true impossible=true two=true
+== test_doors
+DOORS RESULT kitchen=true bedroom=true
+== test_shop
+SHOP RESULT panel=true buy=true swap=true afford=true unequip=true persist=true earn=true lulu=true
+DONE

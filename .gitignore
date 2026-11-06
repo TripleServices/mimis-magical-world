@@ -1,0 +1,19 @@
+# Godot import cache / editor state (regenerated on import)
+.godot/
+
+# Build outputs (local manual route + CI)
+build/android/
+build/aab-work-*/
+build/web/
+*.aab
+*.apk
+*.zip
+*.idsig
+
+# Android signing secrets — NEVER commit
+android/*.keystore
+android/keystore-info.txt
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

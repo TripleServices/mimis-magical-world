@@ -1,0 +1,122 @@
+# Build the signed Android App Bundle (AAB) for "Mimi's Magical World" (Godot 4.6.3)
+# with the GodotGooglePlayBilling plugin (Gradle build).
+#
+# Trigger: manual (Actions tab -> "Build Android AAB" -> Run workflow).
+# Output: the signed .aab as a workflow artifact (download it and upload it to
+# Play Console by hand; nothing is uploaded to Play automatically).
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   ANDROID_KEYSTORE_BASE64  - base64 of android/mimi-upload.keystore
+#                              (base64 -w0 android/mimi-upload.keystore)
+#   KEYSTORE_PASSWORD        - store password (also the key password: Godot's
+#                              export preset carries a single password field,
+#                              used for both store and key)
+#   KEY_ALIAS                - key alias (mimi-upload)
+#   KEY_PASSWORD             - key password (same value as KEYSTORE_PASSWORD
+#                              for this keystore; kept for parity with the
+#                              manual jarsigner route)
+#
+# The committed export_presets.cfg carries __KEYSTORE_PASSWORD__ as a
+# placeholder; this workflow injects the real values from secrets before
+# exporting. Never commit the real password.
+
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-aab:
+    name: Build signed AAB (Godot 4.6.3)
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.6.3
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK (API 36, build-tools 36.x)
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 11076708
+
+      - name: Install Android platform and build-tools
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Download Godot 4.6.3 editor + export templates
+        run: |
+          curl -sL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -o -q godot.zip
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --version
+
+      - name: Install export templates + Android build template
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          unzip -o -q templates.tpz "templates/*" -d /tmp/tpz
+          cp /tmp/tpz/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          mkdir -p android/build
+          unzip -o -q /tmp/tpz/templates/android_source.zip -d android/build
+          test -f android/build/build.gradle
+
+      - name: Restore upload keystore from secret
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/mimi-upload.keystore
+          test -s android/mimi-upload.keystore
+
+      - name: Inject keystore credentials into export preset
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          ws = os.environ["GITHUB_WORKSPACE"]
+          path = os.path.join(ws, "export_presets.cfg")
+          s = open(path).read()
+          assert "__KEYSTORE_PASSWORD__" in s, "placeholder missing in export_presets.cfg"
+          s = s.replace("__KEYSTORE_PASSWORD__", os.environ["KEYSTORE_PASSWORD"])
+          s = re.sub(
+              r'keystore/release_user="[^"]*"',
+              f'keystore/release_user="{os.environ["KEY_ALIAS"]}"',
+              s,
+          )
+          # The preset stores an absolute local path for the keystore; point it
+          # at the keystore restored in this checkout.
+          s = re.sub(
+              r'keystore/release="[^"]*mimi-upload\.keystore"',
+              f'keystore/release="{ws}/android/mimi-upload.keystore"',
+              s,
+          )
+          open(path, "w").write(s)
+          print("preset credentials injected (values not shown)")
+          PY
+
+      - name: Import project (headless)
+        run: |
+          "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --editor --quit
+
+      - name: Export signed AAB (preset "Android", v1.2)
+        run: |
+          "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --export-release "Android" build/android/mimis-magical-world.aab
+          ls -lh build/android/mimis-magical-world.aab
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mimis-magical-world-1.2-aab
+          path: build/android/mimis-magical-world.aab
+          if-no-files-found: error

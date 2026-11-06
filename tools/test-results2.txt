@@ -1,0 +1,3 @@
+== test_levels
+LEVELS RESULT wins=3 time_ok=[true, true, true] spots_ok=[true, true, true] world_ok=[true, true, true] lvl2_mouse_off=true lvl3_mouse_on=true back_at_menu=true
+== test_game
