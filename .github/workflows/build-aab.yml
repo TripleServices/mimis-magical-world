@@ -44,15 +44,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # NOTE (2026-11-06): android-actions/setup-android@v3 fails here — it
+      # tries to install the obsolete "tools" package, which no longer
+      # exists in Google's repository (sdkmanager: "Failed to find package
+      # 'tools'", exit 1). So the SDK is installed by hand instead.
       - name: Set up Android SDK (API 36, build-tools 36.x)
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 11076708
-
-      - name: Install Android platform and build-tools
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          cd "$ANDROID_HOME/cmdline-tools"
+          curl -sL -o cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          unzip -o -q cmdline-tools.zip -d latest-tmp
+          mv latest-tmp/cmdline-tools latest
+          rm -rf latest-tmp cmdline-tools.zip
+          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Download Godot 4.6.3 editor + export templates
         run: |
