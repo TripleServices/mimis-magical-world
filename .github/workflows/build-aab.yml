@@ -6,8 +6,12 @@
 # Play Console by hand; nothing is uploaded to Play automatically).
 #
 # Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   ANDROID_KEYSTORE_BASE64  - base64 of android/mimi-upload.keystore
-#                              (base64 -w0 android/mimi-upload.keystore)
+#   KEYSTORE_ENC_PASSPHRASE - passphrase for the committed encrypted keystore
+#                              android/mimi-upload.keystore.enc (AES-256-CBC).
+#                              The keystore itself is stored encrypted in the
+#                              repo because the 3.5 KB base64 secret kept
+#                              getting mangled on save (builds #3-#5); a short
+#                              passphrase pastes reliably.
 #   KEYSTORE_PASSWORD        - store password (also the key password: Godot's
 #                              export preset carries a single password field,
 #                              used for both store and key)
@@ -79,9 +83,11 @@ jobs:
           unzip -o -q /tmp/tpz/templates/android_source.zip -d android/build
           test -f android/build/build.gradle
 
-      - name: Restore upload keystore from secret
+      - name: Restore upload keystore (decrypt committed file)
+        env:
+          KEYSTORE_ENC_PASSPHRASE: ${{ secrets.KEYSTORE_ENC_PASSPHRASE }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/mimi-upload.keystore
+          openssl enc -d -aes-256-cbc -pbkdf2 -in android/mimi-upload.keystore.enc -out android/mimi-upload.keystore -pass "pass:$KEYSTORE_ENC_PASSPHRASE"
           test -s android/mimi-upload.keystore
 
       - name: Inject keystore credentials into export preset
