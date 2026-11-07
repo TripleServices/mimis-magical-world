@@ -119,6 +119,7 @@ jobs:
 
       - name: Export signed AAB (preset "Android", v1.2)
         run: |
+          mkdir -p build/android
           "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --export-release "Android" build/android/mimis-magical-world.aab
           ls -lh build/android/mimis-magical-world.aab
 
