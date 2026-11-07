@@ -113,6 +113,19 @@ jobs:
           print("preset credentials injected (values not shown)")
           PY
 
+      - name: Diagnose keystore (temporary)
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          echo "--- keystore sha256 (local file is 6d22499f98e3caad9fbfff209d7082d0968f98bd2114a8f9dbbccf775d21437b) ---"
+          sha256sum android/mimi-upload.keystore
+          echo "--- keytool list (password never printed) ---"
+          keytool -list -keystore android/mimi-upload.keystore -storepass "$KEYSTORE_PASSWORD" 2>&1 | sed 's/Certificate fingerprint.*//'
+          echo "--- preset release lines (password masked) ---"
+          grep "keystore/release" export_presets.cfg | sed -E 's/(release_password=).*/\1***/'
+          echo "--- placeholder remaining? (0 = injected) ---"
+          grep -c "__KEYSTORE_PASSWORD__" export_presets.cfg || true
+
       - name: Import project (headless)
         run: |
           "./Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --editor --quit
