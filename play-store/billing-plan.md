@@ -68,10 +68,14 @@ earning coins by playing (`buy_only = false` there).
   (`bin/release/GodotGooglePlayBilling-release.aar`, ~15 KB, thin — the Billing
   Library itself is NOT bundled).
 - Gradle dependency it declares (in `export_plugin.gd`):
-  `com.android.billingclient:billing-ktx:7.1.1` — resolved from Google Maven
-  at export time by Gradle. Its transitive deps: `billing:7.1.1`,
-  `kotlin-stdlib`, `kotlinx-coroutines-core`. (Verified from the
-  billing-ktx 7.1.1 POM on Google Maven.)
+  `com.android.billingclient:billing-ktx:8.0.0` — resolved from Google Maven
+  at export time by Gradle. Its transitive deps: `billing:8.0.0`,
+  `kotlin-stdlib`, `kotlinx-coroutines-core`. (Bumped from 7.1.1 on
+  2026-11-07: Play Console rejected the v1.2 AAB because it used Billing
+  Library 7.1.1 and Google now requires 8.0.0 minimum. The plugin's
+  compiled code only calls modern ProductDetails APIs, all still present
+  in 8.0.0 — verified by inspecting the AAR's classes — so the bump is
+  safe; no SkuDetails / getSku() / queryPurchaseHistory usage.)
 - API (matches the Godot 4.3 docs page "Android in-app purchases"):
   autoload singleton `BillingClient` with `start_connection()`,
   `query_product_details(PackedStringArray, ProductType)`,
@@ -88,8 +92,9 @@ earning coins by playing (`buy_only = false` there).
   plugin enabled. All game code must guard with
   `OS.has_feature("android")` / `Engine.has_singleton(...)`.
 - minSdk: the plugin manifest declares minSdk 21 — matches the template
-  (minSdk 21). Play Billing Library 7.1.1 is above Google's minimum
-  (Billing Library 6+ has been required since 2024).
+  (minSdk 21). Play Billing Library 8.0.0 is above Google's minimum
+  (Google requires Billing Library 8.0+ since 2025; 7.1.1 was rejected
+  by Play Console on 2026-11-07).
 
 ### Considered and rejected
 
