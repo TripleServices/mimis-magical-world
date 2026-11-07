@@ -82,6 +82,12 @@ jobs:
           mkdir -p android/build
           unzip -o -q /tmp/tpz/templates/android_source.zip -d android/build
           test -f android/build/build.gradle
+          # Godot refuses to export when android/.build_version disagrees
+          # with the editor (build #6: "Template installed: 4.3.stable /
+          # Requested version: 4.6.3.stable"). The zip does not carry the
+          # file, so stamp it with the editor version we just installed.
+          echo "${GODOT_VERSION}.stable" > android/.build_version
+          cat android/.build_version
 
       - name: Restore upload keystore (decrypt committed file)
         env:
