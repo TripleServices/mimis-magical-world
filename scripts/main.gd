@@ -411,6 +411,8 @@ func _open_shop() -> void:
 	if buy_only and _billing != null:
 		if _billing.is_ready():
 			_billing.query_purchases(_PRODUCT_TYPE_INAPP)
+			if _pack_prices.is_empty():
+				_billing.query_product_details(PackedStringArray(COIN_PACKS.keys()), _PRODUCT_TYPE_INAPP)
 		else:
 			_billing.start_connection()
 	_refresh_shop()
@@ -485,7 +487,8 @@ func _on_billing_product_details(response: Dictionary) -> void:
 	for p in details:
 		if p is Dictionary:
 			var pid := String(p.get("product_id", ""))
-			var price := String(p.get("price", ""))
+			var offer: Dictionary = p.get("one_time_purchase_offer_details", {})
+			var price := String(offer.get("formatted_price", p.get("price", "")))
 			if pid != "" and COIN_PACKS.has(pid) and price != "":
 				_pack_prices[pid] = price
 	_refresh_pack_buttons()
@@ -523,6 +526,10 @@ func _purchase_state(p: Dictionary) -> String:
 
 func _reconcile_purchase(p: Dictionary) -> void:
 	var pid := String(p.get("product_id", ""))
+	if pid == "":
+		var ids: Array = p.get("product_ids", [])
+		if not ids.is_empty():
+			pid = String(ids[0])
 	var token := String(p.get("purchase_token", ""))
 	if pid == "" or token == "" or not COIN_PACKS.has(pid):
 		return
